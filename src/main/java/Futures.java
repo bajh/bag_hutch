@@ -5,20 +5,20 @@ import java.util.stream.IntStream;
 import java.util.concurrent.CompletableFuture;
 
 public class Futures {
-    public static <T> CompletableFuture<List<Either<T, Exception>>> awaitN(List<CompletableFuture<T>> futures, int firstN) {
+    public static <T> CompletableFuture<ResultSummary<T>> awaitN(List<CompletableFuture<T>> futures, int firstN) {
         AtomicInteger nSuccessful = new AtomicInteger(0);
         int allowedErrors = futures.size() - firstN;
         AtomicInteger errorsLeft = new AtomicInteger(allowedErrors);
         List<Either<T, Exception>> results = new ArrayList<Either<T, Exception>>();
         while (results.size() < futures.size()) results.add(null);
 
-        CompletableFuture<List<Either<T, Exception>>> result = new CompletableFuture<List<Either<T, Exception>>>();
+        CompletableFuture<ResultSummary<T>> result = new CompletableFuture<ResultSummary<T>>();
 
         IntStream.range(0, futures.size()).forEach(i -> {
             futures.get(i).thenAccept(t -> {
                 results.set(i, Either.leftValue(t));
                 if (nSuccessful.incrementAndGet() >= firstN) {
-                    result.complete(results);
+                    result.complete(new ResultSummary(true, results));
                 }
             }).exceptionally(e -> {
                 results.set(i, Either.rightValue(e));
@@ -30,13 +30,23 @@ public class Futures {
                     // errors that took place because Exceptions can't hold generic types
                     // For now, the caller will have to just remember how many completions they asked for and check whether
                     // there are that many results
-                    result.complete(results);
+                    result.complete(new ResultSummary(false, results));
                     return null;
                 }
             });
         });
 
         return result;
+    }
+
+    public static class ResultSummary<T> {
+        boolean successful;
+        List<Either<T, Exception>> results;
+
+        public ResultSummary(boolean successful, List<Either<T, Exception>> results) {
+            this.successful = successful;
+            this.results = results;
+        }
     }
 
 }
