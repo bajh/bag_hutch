@@ -1,14 +1,12 @@
 package data;
 
-import java.util.Arrays;
-
 import static data.VectorClock.Causality.*;
 
 public class Record {
-    byte[][] versions;
-    VectorClock vectorClock;
+    public String[] versions;
+    public VectorClock vectorClock;
 
-    public byte[][] getVersions() {
+    public String[] getVersions() {
         return this.versions;
     }
 
@@ -16,30 +14,26 @@ public class Record {
         return vectorClock;
     }
 
-    public Record(byte[][] data, VectorClock vectorClock) {
-        this.versions = data;
-        this.vectorClock = vectorClock;
+    public Record() {
+        this.versions = null;
+        this.vectorClock = new VectorClock();
     }
 
-    public Record(byte[] data, VectorClock vectorClock) {
-        this.versions = new byte[][]{data};
+    public Record(String data, VectorClock vectorClock) {
+        this.versions = new String[]{data};
         this.vectorClock = vectorClock;
     }
 
     public Record(String[] data, VectorClock vectorClock) {
-        this.versions = new byte[data.length][];
-        for (int i = 0; i < data.length; i++) {
-            this.versions[i] = data[i].getBytes();
-        }
-        this.vectorClock = vectorClock;
-    }
-
-    public Record(String data, VectorClock vectorClock) {
-        this.versions = new byte[][]{data.getBytes()};
+        this.versions = data;
         this.vectorClock = vectorClock;
     }
 
     public Record combine(Record other) {
+        if (other == null) {
+            return this;
+        }
+
         switch (getClock().getCausality(other.getClock())) {
             case EQUAL:
                 return this;
@@ -48,12 +42,19 @@ public class Record {
             case CAUSED_BY:
                 return this;
             case UNRELATED:
-                byte[][] combinedData = new byte[getVersions().length + other.getVersions().length][];
+                String[] combinedData = new String[getVersions().length + other.getVersions().length];
                 System.arraycopy(getVersions(), 0, combinedData, 0, getVersions().length);
                 System.arraycopy(other.getVersions(), 0, combinedData, getVersions().length, other.getVersions().length);
                 return new Record(combinedData, getClock().merge(other.getClock()));
         }
         return null;
+    }
+
+    // TODO: I think the fact that this returns a Record maybe implies it's non-destructive
+    // so perhaps it should either not use fluid-interface style OR should clone Record
+    public Record withNextVectorClock(String nodeId) {
+        vectorClock = getClock().withNextCounter(nodeId);
+        return this;
     }
 
     @Override
@@ -87,10 +88,10 @@ public class Record {
             return false;
         }
 
-        for (byte[] a : getVersions()) {
+        for (String a : getVersions()) {
             boolean foundMatch = false;
-            for (byte[] b : r.getVersions()) {
-                if (Arrays.equals(a, b)) {
+            for (String b : r.getVersions()) {
+                if (a.equals(b)) {
                     foundMatch = true;
                     break;
                 }

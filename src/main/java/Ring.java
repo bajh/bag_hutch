@@ -12,6 +12,7 @@ public class Ring {
     private KeyHasher keyHasher = new MD5Hasher();
 
     // q is the number of partitions that the hash space should be divided into
+    // q must divide evenly into 2^129
     public Ring(int q, List<Node> nodes) throws InvalidQValueException {
         BigInteger bigQ = BigInteger.valueOf(q);
         BigInteger tokenSize = maxOffset.divide(bigQ);
@@ -26,10 +27,10 @@ public class Ring {
         }
     }
 
-    public List<Node> getNodes(int n, byte[] key) throws DigestException {
-        int coordinatorIx = getCoordinatorIx(key);
+    public List<Node> getNodes(int n, String key) throws DigestException {
+        int coordinatorIx = getCoordinatorIx(key.getBytes());
 
-        List<Node> nodes = new ArrayList<Node>();
+        List<Node> nodes = new ArrayList<>();
         for (int i = coordinatorIx; i - coordinatorIx < n; i++) {
             nodes.add(tokens.get(i % tokens.size()).getNode());
         }
@@ -65,7 +66,7 @@ public class Ring {
                 buf[0] = 0;
                 digest.digest(buf, 1, 16);
                 return new BigInteger(buf);
-            } catch (NoSuchAlgorithmException _) {
+            } catch (NoSuchAlgorithmException e) {
                 // pass - this cannot happen because we know MD5 is an algorithm
                 return BigInteger.ZERO;
             }

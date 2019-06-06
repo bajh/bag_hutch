@@ -24,7 +24,7 @@ public class Coordinator {
 
     // contact n replicas on which data is stored
     // when the results come back, check if we got enough successes and complete future
-    public CompletableFuture<Record> get(byte[] key) throws IOException, DigestException {
+    public CompletableFuture<Record> get(String key) throws IOException, DigestException {
         List<Node> nodes = ring.getNodes(r, key);
         List<CompletableFuture<Record>> futures = nodes.stream()
                 .map((node) -> node.getClient().get(key))
@@ -38,7 +38,7 @@ public class Coordinator {
             Record record = null;
 
             if (!resultSummary.successful) {
-                // TODO: break out with an error
+                throw new RuntimeException("not enough successful reads: " + r + " required");
             }
 
             for (Either<Record, Exception> result : resultSummary.results) {
@@ -59,10 +59,17 @@ public class Coordinator {
         return combinedResult;
     }
 
-    public void put(byte[] key, byte[] value, Context context) throws IOException {
-//        List<Node> nodes = ring.getNodes(n, key);
-        // TODO: make concurrent requests to these nodes and once w nodes have sent back
-        // successful responses, complete future
+    public CompletableFuture<Void> put(String key, String value, Context context) throws IOException, DigestException {
+        List<Node> nodes = ring.getNodes(n, key);
+        List<CompletableFuture<Context>> futures = nodes.stream()
+                .map((node) -> node.getClient().put(key, value, context))
+                .collect(Collectors.toList());
 
+        return Futures.awaitN(futures, w).thenAccept(resultSummary -> {
+            if (!resultSummary.successful) {
+                // TODO: unsure if this should be a different type of exception
+                throw new RuntimeException("not enough successful writes: " + w + " required");
+            }
+        });
     }
 }

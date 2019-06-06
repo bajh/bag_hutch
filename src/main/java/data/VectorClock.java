@@ -1,9 +1,12 @@
 package data;
 
+import com.google.common.collect.ImmutableMap;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Set;
+
+import static java.util.Map.entry;
 
 public class VectorClock {
     private Map<String, Integer> nodeCounters;
@@ -79,6 +82,20 @@ public class VectorClock {
         }
 
         return Causality.EQUAL;
+    }
+
+    public VectorClock withNextCounter(String nodeId) {
+        Integer counter;
+        if (getNodeCounters().containsKey(nodeId)) {
+            counter = getNodeCounters().get(nodeId);
+        } else {
+            counter = 0;
+        }
+
+        Map<String, Integer> nextClock = new HashMap<>(getNodeCounters());
+        nextClock.put(nodeId, counter + 1);
+
+        return new VectorClock(nextClock);
     }
 
     @Override

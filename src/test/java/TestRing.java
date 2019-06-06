@@ -4,8 +4,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.fail;
 
 public class TestRing {
     private static class StaticKeyHasher implements Ring.KeyHasher {
@@ -47,7 +47,18 @@ public class TestRing {
 
         Ring ring = new Ring(32, allNodes);
         ring.setKeyHasher(keyHasher);
-        List<Node> nodes = ring.getNodes(5, "snuds".getBytes());
+        List<Node> nodes = ring.getNodes(5, "snuds");
         assertEquals(nodes, new ArrayList<Node>(Arrays.asList(node8, node1, node2, node3, node4)));
+    }
+
+    @Test
+    public void testInvalidRing() throws Exception {
+        try {
+            new Ring(11, new ArrayList<Node>());
+        } catch (Ring.InvalidQValueException e) {
+            return;
+        }
+
+        fail("expected Ring constructor to throw if Q does not divide evently into 2^129");
     }
 }
