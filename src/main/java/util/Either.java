@@ -1,3 +1,5 @@
+package util;
+
 public class Either<L, R> {
 
     public boolean isLeft = false;

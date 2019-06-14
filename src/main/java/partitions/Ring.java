@@ -1,3 +1,10 @@
+package partitions;
+
+import com.google.gson.*;
+import com.google.gson.annotations.Expose;
+import partitions.Node;
+
+import java.lang.reflect.Type;
 import java.math.BigInteger;
 import java.security.DigestException;
 import java.security.MessageDigest;
@@ -8,7 +15,9 @@ import java.util.List;
 public class Ring {
 
     private BigInteger maxOffset = BigInteger.valueOf(2).pow(129);
-    private List<Token> tokens = new ArrayList<Token>();
+
+    private List<Token> tokens = new ArrayList<>();
+
     private KeyHasher keyHasher = new MD5Hasher();
 
     // q is the number of partitions that the hash space should be divided into
@@ -25,6 +34,14 @@ public class Ring {
             tokens.add(new Token(offset, nodes.get(i % nodes.size())));
             i++;
         }
+    }
+
+    public Ring(List<Token> tokens) {
+        this.tokens = tokens;
+    }
+
+    public List<Token> getTokens() {
+        return tokens;
     }
 
     public List<Node> getNodes(int n, String key) throws DigestException {

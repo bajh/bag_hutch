@@ -1,3 +1,5 @@
+package partitions;
+
 import java.math.BigInteger;
 
 public class Token {

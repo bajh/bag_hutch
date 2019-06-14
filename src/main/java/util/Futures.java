@@ -1,3 +1,5 @@
+package util;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -22,17 +24,15 @@ public class Futures {
                 }
             }).exceptionally(e -> {
                 results.set(i, Either.rightValue(e));
-                if (errorsLeft.decrementAndGet() > 0) {
-                    return null;
-                } else {
+                if (errorsLeft.decrementAndGet() == 0) {
                     // TODO: think about this more, ideally this would result in the future completing exceptionally
                     // But if I complete with an exception, there isn't a way to give the caller access to the specific
                     // errors that took place because Exceptions can't hold generic types
                     // For now, the caller will have to just remember how many completions they asked for and check whether
                     // there are that many results
                     result.complete(new ResultSummary(false, results));
-                    return null;
                 }
+                return null;
             });
         });
 
@@ -40,8 +40,8 @@ public class Futures {
     }
 
     public static class ResultSummary<T> {
-        boolean successful;
-        List<Either<T, Exception>> results;
+        public boolean successful;
+        public List<Either<T, Exception>> results;
 
         public ResultSummary(boolean successful, List<Either<T, Exception>> results) {
             this.successful = successful;
