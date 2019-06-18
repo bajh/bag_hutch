@@ -11,7 +11,7 @@ public class GossipClient implements Client {
     public GossipClient(String host, int port) throws SocketException, UnknownHostException {
         socket = new DatagramSocket();
         address = InetAddress.getByName(host);
-        port = this.port;
+        this.port = port;
     }
 
     public void sendMessage(GossipAction action) throws IOException {

@@ -1,6 +1,8 @@
 package gossip;
 
 import java.io.*;
+import java.util.ArrayList;
+import java.util.List;
 
 public class Encoder {
     public static byte[] encode(GossipAction action) throws IOException {
@@ -12,7 +14,7 @@ public class Encoder {
         bufWriter.writeByte(action.getTarget().length());
         bufWriter.write(action.getTarget().getBytes());
 
-        bufWriter.writeInt(action.getMessages().length);
+        bufWriter.writeInt(action.getMessages().size());
         for (GossipAction.Message message : action.getMessages()) {
             bufWriter.writeByte(message.messageType.ordinal());
             bufWriter.writeInt(message.incarnationNumber);
@@ -40,7 +42,7 @@ public class Encoder {
         // right now only one message can be piggybacked on a GossipAction at a time
         int nMessages = in.readInt();
 
-        GossipAction.Message[] messages = new GossipAction.Message[nMessages];
+        List<GossipAction.Message> messages = new ArrayList<>();
         for (int readMessages = 0; readMessages < nMessages; readMessages++){
             byte messageType;
             try {
@@ -53,8 +55,8 @@ public class Encoder {
             byte[] msgTargetBuf = new byte[msgTargetSize];
             in.readFully(msgTargetBuf);
 
-            messages[readMessages] = new GossipAction.Message(GossipAction.MessageType.values()[messageType],
-                    incarnationNumber, new String(msgTargetBuf));
+            messages.add(new GossipAction.Message(GossipAction.MessageType.values()[messageType],
+                    incarnationNumber, new String(msgTargetBuf)));
         }
 
         return new GossipAction(actionType, new String(senderBuf), new String(targetBuf), messages);

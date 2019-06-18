@@ -1,21 +1,26 @@
 package gossip;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class GossipAction {
     ActionType actionType;
     private String senderId;
     // If this is a PING_REQ this is the node that the ping should be passed on to
     // If this is an ACK, this is the node whose aliveness is being reported
     private String target;
-    private Message[] messages;
+    private List<Message> messages;
+
+    static int MAX_MESSAGES = 1;
 
     public GossipAction(ActionType actionType, String senderId, String target) {
         this.actionType = actionType;
         this.senderId = senderId;
         this.target = target;
-        this.messages = new Message[0];
+        this.messages = new ArrayList<>();
     }
 
-    public GossipAction(ActionType actionType, String senderId, String target, Message[] messages) {
+    public GossipAction(ActionType actionType, String senderId, String target, List<Message> messages) {
         this.actionType = actionType;
         this.senderId = senderId;
         this.target = target;
@@ -26,12 +31,16 @@ public class GossipAction {
         return target;
     }
 
-    public Message[] getMessages() {
+    public List<Message> getMessages() {
         return messages;
     }
 
     public String getSenderId() {
         return senderId;
+    }
+
+    public void addMessage(int i, Message message) {
+        this.messages.add(i, message);
     }
 
     public enum ActionType {
@@ -75,8 +84,17 @@ public class GossipAction {
 
     @Override
     public String toString() {
-        return "GossipAction{actionType=" + actionType + ", senderId=" + getSenderId() + ", target=" + getTarget() +
-                ", messages=" + getMessages() + "}";
+        StringBuffer buf = new StringBuffer();
+        buf.append("GossipAction{actionType=" + actionType + ", senderId=" + getSenderId() + ", target=" + getTarget() +
+                ", messages=[");
+            for (int i = 0; i < messages.size(); i++) {
+                buf.append(messages.get(i).toString());
+                if (i < messages.size() - 1) {
+                    buf.append(", ");
+                }
+            }
+        buf.append("]}");
+        return buf.toString();
     }
 
     @Override
@@ -88,11 +106,11 @@ public class GossipAction {
             return false;
         }
         GossipAction a = (GossipAction) o;
-        if (messages.length != a.messages.length) {
+        if (messages.size() != a.messages.size()) {
             return false;
         }
-        for (int i = 0; i < messages.length; i++) {
-            if (!messages[i].equals(a.messages[i])) {
+        for (int i = 0; i < messages.size(); i++) {
+            if (!messages.get(i).equals(a.messages.get(i))) {
                 return false;
             }
         }
