@@ -1,6 +1,5 @@
 package partitions;
 
-import java.io.IOException;
 import java.security.DigestException;
 import java.util.List;
 
@@ -37,8 +36,13 @@ public class Coordinator {
 
     // contact n replicas on which data is stored
     // when the results come back, check if we got enough successes and complete future
-    public CompletableFuture<Record> get(String key) throws IOException, DigestException {
+    public CompletableFuture<Record> get(String key) throws DigestException {
         List<Node> nodes = ring.getNodes(r, key);
+        if (nodes.size() < r) {
+            CompletableFuture future = new CompletableFuture();
+            future.completeExceptionally(new Exception("not enough healthy nodes to complete read"));
+            return future;
+        }
 
         List<CompletableFuture<Record>> futures = nodes.stream()
                 .map((node) -> getClient(node.getId()).get(key))
@@ -46,7 +50,6 @@ public class Coordinator {
 
         // TODO: retries
         // TODO: timeouts
-        // TODO: when a node fails to respond, mark it as down
         // TODO: when a node needs to be updated because its vector clock was overridden by another, update it
         CompletableFuture combinedResult = Futures.awaitN(futures, r).thenApply(resultSummary -> {
             Record record = null;
@@ -76,11 +79,15 @@ public class Coordinator {
         return combinedResult;
     }
 
-    public CompletableFuture<Context> put(String key, String value, Context context) throws IOException, DigestException {
+    public CompletableFuture<Context> put(String key, String value, Context context) throws DigestException {
 
         List<Node> nodes = ring.getNodes(n, key);
+        if (nodes.size() < w) {
+            CompletableFuture future = new CompletableFuture();
+            future.completeExceptionally(new Exception("not enough healthy nodes to complete write"));
+            return future;
+        }
 
-        // TODO: if there aren't enough nodes, send back an error
         Node coordinatingNode = getCoordinatingNode(nodes);
 
         if (coordinatingNode == null) {
@@ -89,16 +96,16 @@ public class Coordinator {
 
         Context preWriteContext = new Context(context.getVectorClock().withNextCounter(nodeId));
         return getClient(coordinatingNode.getId()).put(key, value, preWriteContext).thenCompose(postWriteContext -> {
-            if (n == 1) {
+            List<CompletableFuture<Context>> futures = nodes.stream()
+                .filter(node -> !node.getId().equals(nodeId))
+                .map(node -> getClient(node.getId()).put(key, value, postWriteContext))
+                .collect(Collectors.toList());
+
+            if (n == 1 || w - 1 == 0) {
                 CompletableFuture<Context> f = new CompletableFuture<>();
                 f.complete(postWriteContext);
                 return f;
             }
-
-            List<CompletableFuture<Context>> futures = nodes.stream()
-                    .filter(node -> !node.getId().equals(nodeId))
-                    .map(node -> getClient(node.getId()).put(key, value, postWriteContext))
-                    .collect(Collectors.toList());
 
             return Futures.awaitN(futures, w - 1).thenApply(resultSummary -> {
                 if (!resultSummary.successful) {
@@ -127,7 +134,6 @@ public class Coordinator {
     }
 
     private Node getCoordinatingNode(List<Node> nodes) {
-        // TODO: maybe getNodes should return a set to make this more efficient
         return nodes.stream()
                 .filter(node -> node.getId().equals(nodeId))
                 .findFirst()
