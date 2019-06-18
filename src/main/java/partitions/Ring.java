@@ -49,7 +49,12 @@ public class Ring {
 
         List<Node> nodes = new ArrayList<>();
         for (int i = coordinatorIx; i - coordinatorIx < n; i++) {
-            nodes.add(tokens.get(i % tokens.size()).getNode());
+            Node node = tokens.get(i % tokens.size()).getNode();
+            if (node.getStatus() != Node.Status.READY) {
+                continue;
+            }
+
+            nodes.add(node);
         }
 
         return nodes;
